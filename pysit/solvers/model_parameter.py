@@ -385,15 +385,27 @@ class ModelParameterBase(object):
                 sl=slice(idx*dof,(idx+1)*dof)
                 result.data[sl] = 0
                 result.data[sl] += p.unlinearize( p.linearize(self.data[sl]) - rhs[idx] )
-        # difference with a ModelParamter or self.Perturbation is OK, but will return a perturbation
-        elif type(rhs) in [type(self), self.Perturbation] and (rhs.data.shape == self.data.shape):
+                
+        # difference with a ModelParamter is OK, but will return a perturbation
+        elif type(rhs) in [type(self)] and (rhs.data.shape == self.data.shape):
             dof = self.mesh.dof(include_bc=self.padded)
             arr = np.zeros_like(self.data)
-            for p,idx in zip(self.parameter_list, itertools.count()):
-                sl=slice(idx*dof,(idx+1)*dof)
+            for p, idx in zip(self.parameter_list, itertools.count()):
+                sl = slice(idx*dof, (idx+1)*dof)
                 arr[sl] += p.linearize(self.data[sl])-p.linearize(rhs.data[sl])
             result = self.perturbation(data=arr)
-            return result   #RETURN HERE ALREADY, BECAUSE OTHERWISE THE RESULT WILL BE POSTPROCESSED EVEN THOUGH IT IS NOT A NONLINEAR MODEL_PARAMETER, BUT A PERTURBATION WITH LINEAR DATA   
+            return result  # RETURN HERE ALREADY, BECAUSE OTHERWISE THE RESULT WILL BE POSTPROCESSED EVEN THOUGH IT IS NOT A NONLINEAR MODEL_PARAMETER, BUT A PERTURBATION WITH LINEAR DATA
+
+        # difference with a perturbation is OK, but will return a ModelParameter
+        elif type(rhs) in [self.Perturbation] and (rhs.data.shape == self.data.shape):
+            dof = self.mesh.dof(include_bc=self.padded)
+            arr = np.zeros_like(self.data)
+            result = type(self)(self.mesh, padded=self.padded)
+            for p, idx in zip(self.parameter_list, itertools.count()):
+                sl = slice(idx*dof, (idx+1)*dof)
+                result.data[sl] = 0
+                result.data[sl] += p.unlinearize(p.linearize(self.data[sl])-rhs.data[sl])
+
         
         # difference with a ModelParamter is OK, but will return an array
         elif type(rhs) is np.ndarray and (rhs.shape == self.data.shape):
